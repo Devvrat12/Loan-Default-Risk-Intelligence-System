@@ -1,0 +1,90 @@
+Create DATABASE loan_risk;
+USE loan_risk;
+SELECT USER();
+
+USE loan_risk;
+
+#overview
+SELECT
+    COUNT(*)                                            AS total_rows,
+    SUM(default_flag)                                  AS total_defaults,
+    ROUND(100.0*SUM(default_flag)/COUNT(*),2)       AS default_rate_pct,
+    MIN(issue_d)                                        AS earliest_loan,
+    MAX(issue_d)                                        AS latest_loan,
+    ROUND(AVG(loan_amnt),2)                            AS avg_loan_amount
+FROM loans;
+
+
+#Default rate by grade
+SELECT
+    grade,
+    COUNT(*)                                          AS loan_count,
+    SUM(default_flag)                                AS defaults,
+    ROUND(100.0*SUM(default_flag)/COUNT(*),2)    AS default_rate_pct,
+    ROUND(AVG(int_rate),2)                           AS avg_int_rate,
+    ROUND(AVG(dti),2)                                AS avg_dti
+FROM loans
+GROUP BY grade
+ORDER BY grade;
+
+
+#Default rate by dti
+SELECT
+    CASE
+        WHEN dti <  10  THEN '1. Low (<10)'
+        WHEN dti <  20  THEN '2. Moderate (10-20)'
+        WHEN dti <  30  THEN '3. High (20-30)'
+        WHEN dti >= 30  THEN '4. Very High (30+)'
+        ELSE                '5. Missing'
+    END                                              AS dti_band,
+    COUNT(*)                                         AS loans,
+    ROUND(100.0*SUM(default_flag)/COUNT(*),2)   AS default_rate_pct
+FROM loans
+GROUP BY dti_band
+ORDER BY dti_band;
+
+
+#VG FICO BY DEFAULT OUTCOME
+SELECT
+    CASE WHEN default_flag = 1 THEN 'Defaulted'
+         ELSE 'Fully Paid' END  AS outcome,
+    COUNT(*)                     AS loans,
+    ROUND(AVG(fico_mid),1)      AS avg_fico,
+    ROUND(MIN(fico_mid),0)      AS min_fico,
+    ROUND(MAX(fico_mid),0)      AS max_fico,
+    ROUND(STD(fico_mid),1)      AS fico_std
+FROM loans
+GROUP BY default_flag;
+
+
+
+#DELINQUENCY × REVOLVING UTILISATION RISK MATRIX
+SELECT
+    CASE
+        WHEN delinq_2yrs = 0              THEN 'No delinquency'
+        WHEN delinq_2yrs BETWEEN 1 AND 2  THEN '1-2 events'
+        ELSE                                  '3+ events'
+    END                                   AS delinq_band,
+    CASE
+        WHEN revol_util <  30             THEN 'Low (<30%)'
+        WHEN revol_util <  70             THEN 'Mid (30-70%)'
+        ELSE                                  'High (70%+)'
+    END                                   AS revol_band,
+    COUNT(*)                              AS loans,
+    ROUND(100.0*SUM(default_flag)/COUNT(*),2) AS default_rate_pct
+FROM loans
+WHERE revol_util BETWEEN 0 AND 100
+GROUP BY delinq_band, revol_band
+ORDER BY default_rate_pct DESC;
+
+
+#QUARTERLY DEFAULT TREND (MySQL version — no DATE_TRUNC)
+SELECT
+    DATE_FORMAT(issue_d, '%Y-%m-01')          AS cohort_month,
+    COUNT(*)                                   AS loans_issued,
+    SUM(default_flag)                          AS defaults,
+    ROUND(100.0*SUM(default_flag)/COUNT(*),2) AS default_rate_pct
+FROM loans
+WHERE issue_d IS NOT NULL
+GROUP BY cohort_month
+ORDER BY cohort_month;
