@@ -1,0 +1,16 @@
+{
+  "project": "Loan Default Risk Intelligence System",
+  "model": "Logistic Regression (sklearn)",
+  "train_rows": 212532,
+  "test_rows": 53133,
+  "features_used": 37,
+  "test_auc": 0.736,
+  "cv_auc_mean": 0.736,
+  "cv_auc_std": 0.003,
+  "precision": 0.338,
+  "recall": 0.672,
+  "f1_score": 0.45,
+  "class_weight": "balanced",
+  "auc_kpi_met": true,
+  "recall_kpi_met": false
+}
